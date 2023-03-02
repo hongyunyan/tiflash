@@ -1520,14 +1520,18 @@ void DeltaMergeStore::restoreStableFiles()
     options.clean_up = true;
     auto file_provider = global_context.getFileProvider();
     auto path_delegate = path_pool->getStableDiskDelegator();
+    LOG_INFO(&Poco::Logger::get("hyy"), "before path_delegate.listPaths");
     for (const auto & root_path : path_delegate.listPaths())
     {
-        //std::cout << " root_path is " << root_path << std::endl;
+        LOG_INFO(&Poco::Logger::get("hyy"), "root_path is {}", root_path);
         for (const auto & file_id : DMFile::listAllInPath(file_provider, root_path, options))
         {
+            LOG_INFO(&Poco::Logger::get("hyy"), "file_id is {}", file_id);
             //std::cout << " file_id is " << file_id << std::endl;
             auto dmfile = DMFile::restore(file_provider, file_id, /* page_id= */ 0, root_path, DMFile::ReadMetaMode::diskSizeOnly()); // 主要是要读那4个文件，现在也改成了一个文件了。测一下性能
+            LOG_INFO(&Poco::Logger::get("hyy"), "finish restore dmfile");
             path_delegate.addDTFile(file_id, dmfile->getBytesOnDisk(), root_path);
+            LOG_INFO(&Poco::Logger::get("hyy"), "finish add dtFile");
         }
     }
 }
