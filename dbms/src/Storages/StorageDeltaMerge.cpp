@@ -1581,6 +1581,7 @@ SortDescription StorageDeltaMerge::getPrimarySortDescription() const
 
 DeltaMergeStorePtr & StorageDeltaMerge::getAndMaybeInitStore()
 {
+    LOG_INFO(&Poco::Logger::get("hyy"), "getAndMaybeInitStore");
     if (storeInited())
     {
         return _store;

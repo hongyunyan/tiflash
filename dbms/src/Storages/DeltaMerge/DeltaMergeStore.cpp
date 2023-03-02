@@ -202,6 +202,7 @@ DeltaMergeStore::DeltaMergeStore(Context & db_context,
     , next_gc_check_key(is_common_handle ? RowKeyValue::COMMON_HANDLE_MIN_KEY : RowKeyValue::INT_HANDLE_MIN_KEY)
     , log(Logger::get(fmt::format("table_id={}", physical_table_id_)))
 {
+    LOG_INFO(&Poco::Logger::get("hyy"), "DeltaMergeStore::DeltaMergeStore");
     replica_exist.store(has_replica);
     // for mock test, table_id_ should be DB::InvalidTableID
     NamespaceId ns_id = physical_table_id == DB::InvalidTableID ? TEST_NAMESPACE_ID : physical_table_id;
@@ -215,7 +216,9 @@ DeltaMergeStore::DeltaMergeStore(Context & db_context,
 
     // Restore existing dm files and set capacity for path_pool.
     // Should be done before any background task setup.
+    LOG_INFO(&Poco::Logger::get("hyy"), "Before restoreStableFiles");
     restoreStableFiles();
+    LOG_INFO(&Poco::Logger::get("hyy"), "Finish restoreStableFiles");
 
     original_table_columns.emplace_back(original_table_handle_define);
     original_table_columns.emplace_back(getVersionColumnDefine());
@@ -229,14 +232,18 @@ DeltaMergeStore::DeltaMergeStore(Context & db_context,
     original_table_header = std::make_shared<Block>(toEmptyBlock(original_table_columns));
     store_columns = generateStoreColumns(original_table_columns, is_common_handle);
 
+    LOG_INFO(&Poco::Logger::get("hyy"), "Finish generate columns");
+
     auto dm_context = newDMContext(db_context, db_context.getSettingsRef());
     PageStorageRunMode page_storage_run_mode;
     try
     {
         page_storage_run_mode = storage_pool->restore(); // restore from disk
+        LOG_INFO(&Poco::Logger::get("hyy"), "restore storage pool");
         if (const auto first_segment_entry = storage_pool->metaReader()->getPageEntry(DELTA_MERGE_FIRST_SEGMENT_ID);
-            !first_segment_entry.isValid())
+            !first_segment_entry.isValid()) // 没有 valid 的 segment 的时候
         {
+            LOG_INFO(&Poco::Logger::get("hyy"), "only one segments");
             auto segment_id = storage_pool->newMetaPageId();
             if (segment_id != DELTA_MERGE_FIRST_SEGMENT_ID)
             {
@@ -262,15 +269,18 @@ DeltaMergeStore::DeltaMergeStore(Context & db_context,
         }
         else
         {
-            auto segment_id = DELTA_MERGE_FIRST_SEGMENT_ID;
+            LOG_INFO(&Poco::Logger::get("hyy"), "begin restore segments");
+            auto segment_id = DELTA_MERGE_FIRST_SEGMENT_ID; // 感觉也可以并行？ 
             while (segment_id)
             {
+                LOG_INFO(&Poco::Logger::get("hyy"), "restore segments segment_id");
                 auto segment = Segment::restoreSegment(log, *dm_context, segment_id);
                 segments.emplace(segment->getRowKeyRange().getEnd(), segment);
                 id_to_segment.emplace(segment_id, segment);
 
                 segment_id = segment->nextSegmentId();
             }
+            LOG_INFO(&Poco::Logger::get("hyy"), "finish restore segments");
         }
     }
     catch (...)
@@ -1512,9 +1522,11 @@ void DeltaMergeStore::restoreStableFiles()
     auto path_delegate = path_pool->getStableDiskDelegator();
     for (const auto & root_path : path_delegate.listPaths())
     {
+        //std::cout << " root_path is " << root_path << std::endl;
         for (const auto & file_id : DMFile::listAllInPath(file_provider, root_path, options))
         {
-            auto dmfile = DMFile::restore(file_provider, file_id, /* page_id= */ 0, root_path, DMFile::ReadMetaMode::diskSizeOnly());
+            //std::cout << " file_id is " << file_id << std::endl;
+            auto dmfile = DMFile::restore(file_provider, file_id, /* page_id= */ 0, root_path, DMFile::ReadMetaMode::diskSizeOnly()); // 主要是要读那4个文件，现在也改成了一个文件了。测一下性能
             path_delegate.addDTFile(file_id, dmfile->getBytesOnDisk(), root_path);
         }
     }

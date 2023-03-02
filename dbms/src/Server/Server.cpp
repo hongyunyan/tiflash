@@ -489,12 +489,14 @@ private:
 // We only need this task run once.
 void initStores(Context & global_context, const LoggerPtr & log, bool lazily_init_store)
 {
+    LOG_INFO(&Poco::Logger::get("hyy"), "Start initstores");
     auto do_init_stores = [&global_context, log]() {
         auto storages = global_context.getTMTContext().getStorages().getAllStorage();
         int init_cnt = 0;
         int err_cnt = 0;
         for (auto & [table_id, storage] : storages)
         {
+            LOG_INFO(&Poco::Logger::get("hyy"), "Start initstores with table_id {}", table_id);
             // This will skip the init of storages that do not contain any data. TiFlash now sync the schema and
             // create all tables regardless the table have define TiFlash replica or not, so there may be lots
             // of empty tables in TiFlash.

@@ -102,15 +102,19 @@ StableValueSpacePtr StableValueSpace::restore(DMContext & context, PageIdU64 id)
     readIntBinary(valid_bytes, buf);
     readIntBinary(size, buf);
     UInt64 page_id;
-    for (size_t i = 0; i < size; ++i)
+    LOG_INFO(&Poco::Logger::get("hyy"), "before restore dmfiles");
+    for (size_t i = 0; i < size; ++i) // 感觉这边应该也是个不小的开销。
     {
         readIntBinary(page_id, buf);
 
         auto file_id = context.storage_pool.dataReader()->getNormalPageId(page_id);
         auto file_parent_path = context.path_pool.getStableDiskDelegator().getDTFilePath(file_id);
 
+        LOG_INFO(&Poco::Logger::get("hyy"), "restore dmfiles i:{} with page_id:{}, file_id:{}, file_parent_path:{}", i, page_id, file_id, file_parent_path);
+
         auto dmfile = DMFile::restore(context.db_context.getFileProvider(), file_id, page_id, file_parent_path, DMFile::ReadMetaMode::all());
         stable->files.push_back(dmfile);
+        LOG_INFO(&Poco::Logger::get("hyy"), "finish restore dmfiles i:{} with page_id:{}, file_id:{}, file_parent_path:{}", i, page_id, file_id, file_parent_path);
     }
 
     stable->valid_rows = valid_rows;

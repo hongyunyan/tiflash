@@ -266,7 +266,7 @@ SegmentPtr Segment::restoreSegment( //
     DMContext & context,
     PageIdU64 segment_id)
 {
-    Page page = context.storage_pool.metaReader()->read(segment_id); // not limit restore
+    Page page = context.storage_pool.metaReader()->read(segment_id); // not limit restore // 等于我要一次次读 segment_id?
 
     ReadBufferFromMemory buf(page.data.begin(), page.data.size());
     SegmentFormat::Version version;
@@ -301,8 +301,11 @@ SegmentPtr Segment::restoreSegment( //
     readIntBinary(delta_id, buf);
     readIntBinary(stable_id, buf);
 
+    LOG_INFO(&Poco::Logger::get("hyy"), "before restore delta value space");
     auto delta = DeltaValueSpace::restore(context, rowkey_range, delta_id);
+    LOG_INFO(&Poco::Logger::get("hyy"), "finish restore delta value space");
     auto stable = StableValueSpace::restore(context, stable_id);
+    LOG_INFO(&Poco::Logger::get("hyy"), "finish restore stable value space");
     auto segment = std::make_shared<Segment>(parent_log, epoch, rowkey_range, segment_id, next_segment_id, delta, stable);
 
     return segment;

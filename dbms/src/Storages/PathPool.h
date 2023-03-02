@@ -460,7 +460,7 @@ private:
     {
         String path;
         // DMFileID -> file size
-        std::unordered_map<UInt64, size_t> file_size_map;
+        std::unordered_map<UInt64, size_t> file_size_map; // 这个为什么需要一个 unordered_map ? 
     };
     using MainPathInfos = std::vector<MainPathInfo>;
     struct LatestPathInfo
